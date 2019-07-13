@@ -126,7 +126,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\app\str2str\str2str.c" />
+    <ClCompile Include="..\..\..\app\rtkrcv\rtkrcv.c" />
     <ClCompile Include="..\..\..\src\convkml.c" />
     <ClCompile Include="..\..\..\src\convrnx.c" />
     <ClCompile Include="..\..\..\src\datum.c" />

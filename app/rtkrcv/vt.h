@@ -23,7 +23,7 @@ typedef struct vt_tag {                 /* virtual console type */
     int cur;                            /* cursor position */
     int cur_h;                          /* current history */
     int brk;                            /* break status */
-    struct termios tio;                 /* original terminal attribute */
+    //struct termios tio;                 /* original terminal attribute */
     char buff[MAXBUFF];                 /* line buffer */
     char esc[8];                        /* escape buffer */
     char *hist[MAXHIST];                /* history buffer */

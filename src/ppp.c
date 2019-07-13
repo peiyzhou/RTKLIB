@@ -96,7 +96,8 @@ extern void pppoutsolstat(rtk_t *rtk, int level, FILE *fp)
     /* receiver position */
     fprintf(fp,"$POS,%d,%.3f,%d,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n",week,tow,
             rtk->sol.stat,rtk->x[0],rtk->x[1],rtk->x[2],0.0,0.0,0.0);
-    
+	printf("$POS,%d,%.3f,%d,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n", week, tow,
+		rtk->sol.stat, rtk->x[0], rtk->x[1], rtk->x[2], 0.0, 0.0, 0.0);
     /* receiver velocity and acceleration */
     if (rtk->opt.dynamics) {
         ecef2pos(rtk->sol.rr,pos);

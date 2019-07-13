@@ -92,38 +92,38 @@ static int acc_sock(int port)
 *-----------------------------------------------------------------------------*/
 extern int vt_open(vt_t *vt, int port, const char *dev)
 {
-    const char mode[]={C_IAC,C_WILL,C_SUPPGA,C_IAC,C_WILL,C_ECHO};
-    struct termios tio={0};
-    int i,sock,fd;
-    
-    if (vt->state) return 0;
-    vt->state=vt->type=vt->n=vt->nesc=vt->cur=vt->cur_h=vt->brk=0;
-    vt->logfp=NULL;
-    for (i=0;i<MAXHIST;i++) vt->hist[i]=NULL;
-    
-    if (port) { /* telnet */
-        if ((sock=acc_sock(port))<0) return 0;
-        if (write(sock,mode,6)!=6) {
-            fprintf(stderr,"telnet write error: port=%d\n",port);
-            close(sock);
-            return 0;
-        }
-        vt->type=1;
-        vt->in=vt->out=sock;
-    }
-    else {
-        if (!*dev) dev=DEF_DEV;
-        if ((fd=open(dev,O_RDWR))<0||tcgetattr(fd,&tio)<0) {
-            fprintf(stderr,"console device open error: %s\n",dev);
-            return 0;
-        }
-        vt->in=vt->out=fd;
-        
-        /* set terminal mode to raw + no-echo */
-        vt->tio=tio;
-        tio.c_iflag=tio.c_lflag=0;
-        tcsetattr(vt->in,TCSANOW,&tio);
-    }
+    //const char mode[]={C_IAC,C_WILL,C_SUPPGA,C_IAC,C_WILL,C_ECHO};
+    ////struct termios tio={0};
+    //int i,sock,fd;
+    //
+    //if (vt->state) return 0;
+    //vt->state=vt->type=vt->n=vt->nesc=vt->cur=vt->cur_h=vt->brk=0;
+    //vt->logfp=NULL;
+    //for (i=0;i<MAXHIST;i++) vt->hist[i]=NULL;
+    //
+    //if (port) { /* telnet */
+    //    if ((sock=acc_sock(port))<0) return 0;
+    //    if (write(sock,mode,6)!=6) {
+    //        fprintf(stderr,"telnet write error: port=%d\n",port);
+    //        close(sock);
+    //        return 0;
+    //    }
+    //    vt->type=1;
+    //    vt->in=vt->out=sock;
+    //}
+    //else {
+    //    if (!*dev) dev=DEF_DEV;
+    //    if ((fd=open(dev,O_RDWR))<0||tcgetattr(fd,&tio)<0) {
+    //        fprintf(stderr,"console device open error: %s\n",dev);
+    //        return 0;
+    //    }
+    //    vt->in=vt->out=fd;
+    //    
+    //    /* set terminal mode to raw + no-echo */
+    //    vt->tio=tio;
+    //    tio.c_iflag=tio.c_lflag=0;
+    //    tcsetattr(vt->in,TCSANOW,&tio);
+    //}
     vt->state=1;
     return 1;
 }
@@ -136,13 +136,13 @@ extern void vt_close(vt_t *vt)
 {
     int i;
     
-    /* restore terminal mode */
-    if (!vt->type) {
-        tcsetattr(vt->in,TCSANOW,&vt->tio);
-    }
-    close(vt->in);
-    if (vt->logfp) fclose(vt->logfp);
-    for (i=0;i<MAXHIST;i++) free(vt->hist[i]);
+    ///* restore terminal mode */
+    //if (!vt->type) {
+    //    tcsetattr(vt->in,TCSANOW,&vt->tio);
+    //}
+    //close(vt->in);
+    //if (vt->logfp) fclose(vt->logfp);
+    //for (i=0;i<MAXHIST;i++) free(vt->hist[i]);
     vt->state=0;
 }
 /* clear line buffer ---------------------------------------------------------*/
@@ -284,40 +284,40 @@ static int seq_esc(vt_t *vt)
 *-----------------------------------------------------------------------------*/
 extern int vt_getc(vt_t *vt, char *c)
 {
-    struct timeval tv={0,1000}; /* timeout (us) */
-    fd_set rs;
-    int stat;
-    
-    *c='\0';
-    
-    /* read character with timeout */
-    FD_ZERO(&rs);
-    FD_SET(vt->in,&rs);
-    if (!(stat=select(vt->in+1,&rs,NULL,NULL,&tv))) return 1; /* no data */
-    if (stat<0||read(vt->in,c,1)!=1) return 0; /* error */
-    
-    if ((vt->type&&*c==C_IAC)||*c==C_ESC) { /* escape or telnet */
-        vt->esc[0]=*c; *c='\0';
-        vt->nesc=1;
-    }
-    else if (vt->nesc>0&&vt->esc[0]==C_IAC) { /* telnet sequence */
-        vt->esc[vt->nesc++]=*c; *c='\0';
-        if (!seq_telnet(vt)) return 0;
-    }
-    else if (vt->nesc>0&&vt->esc[0]==C_ESC) { /* escape sequence */
-        vt->esc[vt->nesc++]=*c; *c='\0';
-        if (!seq_esc(vt)) return 0;
-    }
-    else if (*c=='\b'||*c==C_DEL) { /* backspace or delete */
-        if (!del_cur(vt)) return 0;
-    }
-    else if (*c==C_CTRC) { /* interrupt (ctrl-c) */
-        vt->brk=1;
-        if (!vt_puts(vt,"^C")) return 0;
-    }
-    else if (isprint(*c)) { /* printable character */
-        if (!ins_cur(vt,*c)) return 0;
-    }
+    //struct timeval tv={0,1000}; /* timeout (us) */
+    //fd_set rs;
+    //int stat;
+    //
+    //*c='\0';
+    //
+    ///* read character with timeout */
+    //FD_ZERO(&rs);
+    //FD_SET(vt->in,&rs);
+    //if (!(stat=select(vt->in+1,&rs,NULL,NULL,&tv))) return 1; /* no data */
+    //if (stat<0||read(vt->in,c,1)!=1) return 0; /* error */
+    //
+    //if ((vt->type&&*c==C_IAC)||*c==C_ESC) { /* escape or telnet */
+    //    vt->esc[0]=*c; *c='\0';
+    //    vt->nesc=1;
+    //}
+    //else if (vt->nesc>0&&vt->esc[0]==C_IAC) { /* telnet sequence */
+    //    vt->esc[vt->nesc++]=*c; *c='\0';
+    //    if (!seq_telnet(vt)) return 0;
+    //}
+    //else if (vt->nesc>0&&vt->esc[0]==C_ESC) { /* escape sequence */
+    //    vt->esc[vt->nesc++]=*c; *c='\0';
+    //    if (!seq_esc(vt)) return 0;
+    //}
+    //else if (*c=='\b'||*c==C_DEL) { /* backspace or delete */
+    //    if (!del_cur(vt)) return 0;
+    //}
+    //else if (*c==C_CTRC) { /* interrupt (ctrl-c) */
+    //    vt->brk=1;
+    //    if (!vt_puts(vt,"^C")) return 0;
+    //}
+    //else if (isprint(*c)) { /* printable character */
+    //    if (!ins_cur(vt,*c)) return 0;
+    //}
     return 1;
 }
 /* get line from console -------------------------------------------------------
