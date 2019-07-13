@@ -720,7 +720,7 @@ static int writefile(file_t *file, unsigned char *buff, int n, char *msg)
     if (!file->fp) return 0;
     
     ns=fwrite(buff,1,n,file->fp);
-    fpos=ftell(file->fp);
+    fpos=ftell(file->fp);//returns the current file position of the given stream.
     fflush(file->fp);
     file->wtime=wtime;
     

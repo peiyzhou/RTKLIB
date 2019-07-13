@@ -45,9 +45,6 @@
     <ClCompile Include="..\..\..\src\pntpos.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\postpos.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\ppp.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -138,18 +135,12 @@
     <ClCompile Include="..\..\..\src\rcv\ublox.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\app\rtkrcv\rtkrcv.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\app\rtkrcv\vt.c">
+    <ClCompile Include="..\..\..\app\str2str\str2str.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\rtklib.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\app\rtkrcv\vt.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

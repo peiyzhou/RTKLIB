@@ -93,6 +93,9 @@
       <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies>Winmm.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -123,8 +126,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\app\rtkrcv\rtkrcv.c" />
-    <ClCompile Include="..\..\..\app\rtkrcv\vt.c" />
+    <ClCompile Include="..\..\..\app\str2str\str2str.c" />
     <ClCompile Include="..\..\..\src\convkml.c" />
     <ClCompile Include="..\..\..\src\convrnx.c" />
     <ClCompile Include="..\..\..\src\datum.c" />
@@ -135,7 +137,6 @@
     <ClCompile Include="..\..\..\src\lambda.c" />
     <ClCompile Include="..\..\..\src\options.c" />
     <ClCompile Include="..\..\..\src\pntpos.c" />
-    <ClCompile Include="..\..\..\src\postpos.c" />
     <ClCompile Include="..\..\..\src\ppp.c" />
     <ClCompile Include="..\..\..\src\ppp_ar.c" />
     <ClCompile Include="..\..\..\src\preceph.c" />
@@ -168,7 +169,6 @@
     <ClCompile Include="..\..\..\src\tle.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\app\rtkrcv\vt.h" />
     <ClInclude Include="..\..\..\src\rtklib.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -408,6 +408,7 @@ extern "C" {
 #define STR_MODE_R  0x1                 /* stream mode: read */
 #define STR_MODE_W  0x2                 /* stream mode: write */
 #define STR_MODE_RW 0x3                 /* stream mode: read/write */
+#define MAX_STR     10
 
 #define GEOID_EMBEDDED    0             /* geoid model: embedded geoid */
 #define GEOID_EGM96_M150  1             /* geoid model: EGM96 15x15" */
@@ -1203,14 +1204,16 @@ typedef struct {        /* stream server type */
     int cycle;          /* server cycle (ms) */
     int buffsize;       /* input/monitor buffer size (bytes) */
     int nmeacycle;      /* NMEA request cycle (ms) (0:no) */
-    int nstr;           /* number of streams (1 input + (nstr-1) outputs */
+    int nstr;           /* number of streams inputs */
+	int nstr_out;       /* number of streams outputs */
     int npb;            /* data length in peek buffer (bytes) */
     double nmeapos[3];  /* NMEA request position (ecef) (m) */
     unsigned char *buff; /* input buffers */
     unsigned char *pbuf; /* peek buffer */
     unsigned int tick;  /* start tick */
-    stream_t stream[16]; /* input/output streams */
-    strconv_t *conv[16]; /* stream converter */
+    stream_t stream[MAX_STR]; /* input streams */
+	stream_t stream_out[MAX_STR]; /* output streams */
+    strconv_t *conv[MAX_STR]; /* stream converter */
     thread_t thread;    /* server thread */
     lock_t lock;        /* lock flag */
 } strsvr_t;
@@ -1222,28 +1225,28 @@ typedef struct {        /* RTK server type */
     int nmeareq;        /* NMEA request (0:no,1:nmeapos,2:single sol) */
     double nmeapos[3];  /* NMEA request position (ecef) (m) */
     int buffsize;       /* input buffer size (bytes) */
-    int format[3];      /* input format {rov,base,corr} */
-    solopt_t solopt[2]; /* output solution options {sol1,sol2} */
+    int format[MAX_STR];      /* input format {rov,base,corr} */
+    solopt_t solopt[MAX_STR]; /* output solution options {sol1,sol2} */
     int navsel;         /* ephemeris select (0:all,1:rover,2:base,3:corr) */
     int nsbs;           /* number of sbas message */
     int nsol;           /* number of solution buffer */
     rtk_t rtk;          /* RTK control/result struct */
-    int nb [3];         /* bytes in input buffers {rov,base} */
-    int nsb[2];         /* bytes in soulution buffers */
-    int npb[3];         /* bytes in input peek buffers */
-    unsigned char *buff[3]; /* input buffers {rov,base,corr} */
-    unsigned char *sbuf[2]; /* output buffers {sol1,sol2} */
-    unsigned char *pbuf[3]; /* peek buffers {rov,base,corr} */
+    int nb [MAX_STR];         /* bytes in input buffers {rov,base} */
+    int nsb[MAX_STR];         /* bytes in soulution buffers */
+    int npb[MAX_STR];         /* bytes in input peek buffers */
+    unsigned char *buff[MAX_STR]; /* input buffers {rov,base,corr} */
+    unsigned char *sbuf[MAX_STR]; /* output buffers {sol1,sol2} */
+    unsigned char *pbuf[MAX_STR]; /* peek buffers {rov,base,corr} */
     sol_t solbuf[MAXSOLBUF]; /* solution buffer */
-    unsigned int nmsg[3][10]; /* input message counts */
-    raw_t  raw [3];     /* receiver raw control {rov,base,corr} */
-    rtcm_t rtcm[3];     /* RTCM control {rov,base,corr} */
-    gtime_t ftime[3];   /* download time {rov,base,corr} */
-    char files[3][MAXSTRPATH]; /* download paths {rov,base,corr} */
-    obs_t obs[3][MAXOBSBUF]; /* observation data {rov,base,corr} */
+    unsigned int nmsg[MAX_STR][10]; /* input message counts */
+    raw_t  raw [MAX_STR];     /* receiver raw control {rov,base,corr} */
+    rtcm_t rtcm[MAX_STR];     /* RTCM control {rov,base,corr} */
+    gtime_t ftime[MAX_STR];   /* download time {rov,base,corr} */
+    char files[MAX_STR][MAXSTRPATH]; /* download paths {rov,base,corr} */
+    obs_t obs[MAX_STR][MAXOBSBUF]; /* observation data {rov,base,corr} */
     nav_t nav;          /* navigation data */
     sbsmsg_t sbsmsg[MAXSBSMSG]; /* SBAS message buffer */
-    stream_t stream[8]; /* streams {rov,base,corr,sol1,sol2,logr,logb,logc} */
+    stream_t stream[MAX_STR]; /* streams {rov,base,corr,sol1,sol2,logr,logb,logc} */
     stream_t *moni;     /* monitor stream */
     unsigned int tick;  /* start tick */
     thread_t thread;    /* server thread */
@@ -1678,8 +1681,12 @@ extern void strsvrinit (strsvr_t *svr, int nout);
 extern int  strsvrstart(strsvr_t *svr, int *opts, int *strs, char **paths,
                         strconv_t **conv, const char *cmd,
                         const double *nmeapos);
+extern int  strsvrstart2(strsvr_t *svr, int *opts, int *strs, char **paths, int *strs_out, char **paths_out,
+	strconv_t **conv, const char *cmd,
+	const double *nmeapos);
 extern void strsvrstop (strsvr_t *svr, const char *cmd);
 extern void strsvrstat (strsvr_t *svr, int *stat, int *byte, int *bps, char *msg);
+extern void strsvrstat2(strsvr_t *svr, int *stat, int *byte, int *bps, char *msg);
 extern strconv_t *strconvnew(int itype, int otype, const char *msgs, int staid,
                              int stasel, const char *opt);
 extern void strconvfree(strconv_t *conv);

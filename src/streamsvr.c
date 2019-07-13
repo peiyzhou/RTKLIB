@@ -377,7 +377,8 @@ static void *strsvrthread(void *arg)
         
         /* write data to output streams */
         for (i=1;i<svr->nstr;i++) {
-            if (svr->conv[i-1]) {
+            if (svr->conv[i-1]) 
+			{
                 strconv(svr->stream+i,svr->conv[i-1],svr->buff,n);
             }
             else {
@@ -398,11 +399,65 @@ static void *strsvrthread(void *arg)
         sleepms(svr->cycle-(int)(tickget()-tick));
     }
     for (i=0;i<svr->nstr;i++) strclose(svr->stream+i);
-    svr->npb=0;
     free(svr->buff); svr->buff=NULL;
     free(svr->pbuf); svr->pbuf=NULL;
     
     return 0;
+}
+/* stearm server thread ------------------------------------------------------*/
+#ifdef WIN32
+static DWORD WINAPI strsvrthread2(void *arg)
+#else
+static void *strsvrthread2(void *arg)
+#endif
+{
+	strsvr_t *svr = (strsvr_t *)arg;
+	unsigned int tick, ticknmea;
+	int i, n, j;
+
+	tracet(3, "strsvrthread2:\n");
+
+	svr->state = 1;
+	svr->tick = tickget();
+	ticknmea = svr->tick - 1000;
+
+	while (svr->state) 
+	{
+		tick = tickget();
+		for (j = 0; j < svr->nstr; j++)
+		{			
+			/* read data from input stream */
+			n = strread(svr->stream+j, svr->buff, svr->buffsize);
+
+			if (svr->conv[j])
+			{
+				strconv(svr->stream_out + j, svr->conv[j], svr->buff, n);
+			}
+			else {
+				strwrite(svr->stream_out + j, svr->buff, n);
+			}
+			/* write nmea messages to input stream */
+			if (svr->nmeacycle > 0 && (int)(tick - ticknmea) >= svr->nmeacycle) {
+				strsendnmea(svr->stream + j, svr->nmeapos);
+				ticknmea = tick;
+			}
+
+			lock(&svr->lock);
+			for (i = 0; i < n&&svr->npb < svr->buffsize; i++) {
+				svr->pbuf[svr->npb++] = svr->buff[i];
+			}
+			unlock(&svr->lock);		
+		}
+		sleepms(svr->cycle - (int)(tickget() - tick));
+	}
+	for (i = 0; i < svr->nstr; i++) strclose(svr->stream + i);
+	for (i = 0; i < svr->nstr_out; i++) strclose(svr->stream_out + i);
+	svr->npb = 0;
+	svr->npb = 0;
+	free(svr->buff); svr->buff = NULL;
+	free(svr->pbuf); svr->pbuf = NULL;
+
+	return 0;
 }
 /* initialize stream server ----------------------------------------------------
 * initialize stream server
@@ -424,9 +479,11 @@ extern void strsvrinit(strsvr_t *svr, int nout)
     for (i=0;i<3;i++) svr->nmeapos[i]=0.0;
     svr->buff=svr->pbuf=NULL;
     svr->tick=0;
-    for (i=0;i<nout+1&&i<16;i++) strinit(svr->stream+i);
-    svr->nstr=i;
-    for (i=0;i<16;i++) svr->conv[i]=NULL;
+	for (i = 0; i < nout  && i < MAX_STR; i++) strinit(svr->stream + i);
+	svr->nstr = i;
+	for (i = 0; i < nout  && i < MAX_STR; i++) strinit(svr->stream_out + i);
+	svr->nstr_out=i;
+    for (i=0;i< MAX_STR;i++) svr->conv[i]=NULL;
     svr->thread=0;
     initlock(&svr->lock);
 }
@@ -459,7 +516,7 @@ extern void strsvrinit(strsvr_t *svr, int nout)
 *          double *nmeapos  I   nmea request position (ecef) (m) (NULL: no)
 * return : status (0:error,1:ok)
 *-----------------------------------------------------------------------------*/
-extern int strsvrstart(strsvr_t *svr, int *opts, int *strs, char **paths,
+extern int strsvrstart2(strsvr_t *svr, int *opts, int *strs, char **paths, int *strs_out, char **paths_out,
                        strconv_t **conv, const char *cmd, const double *nmeapos)
 {
     int i,rw,stropt[5]={0};
@@ -479,7 +536,7 @@ extern int strsvrstart(strsvr_t *svr, int *opts, int *strs, char **paths,
     svr->nmeacycle=0<opts[5]&&opts[5]<1000?1000:opts[5]; /* >=1s */
     for (i=0;i<3;i++) svr->nmeapos[i]=nmeapos?nmeapos[i]:0.0;
     
-    for (i=0;i<svr->nstr-1;i++) svr->conv[i]=conv[i];
+    for (i=0;i<svr->nstr;i++) svr->conv[i]=conv[i];
     
     if (!(svr->buff=(unsigned char *)malloc(svr->buffsize))||
         !(svr->pbuf=(unsigned char *)malloc(svr->buffsize))) {
@@ -487,34 +544,102 @@ extern int strsvrstart(strsvr_t *svr, int *opts, int *strs, char **paths,
         return 0;
     }
     /* open streams */
+
     for (i=0;i<svr->nstr;i++) {
-        strcpy(file1,paths[0]); if ((p=strstr(file1,"::"))) *p='\0';
-        strcpy(file2,paths[i]); if ((p=strstr(file2,"::"))) *p='\0';
-        if (i>0&&*file1&&!strcmp(file1,file2)) {
-            sprintf(svr->stream[i].msg,"output path error: %s",file2);
-            for (i--;i>=0;i--) strclose(svr->stream+i);
-            return 0;
-        }
-        rw=i==0?STR_MODE_R:STR_MODE_W;
+        strcpy(file1,paths[i]); if ((p=strstr(file1,"::"))) *p='\0';
+       
+		// input stream
+        rw=STR_MODE_R;
         if (strs[i]!=STR_FILE) rw|=STR_MODE_W;
-        if (stropen(svr->stream+i,strs[i],rw,paths[i])) continue;
-        for (i--;i>=0;i--) strclose(svr->stream+i);
+        if (stropen(svr->stream+ i,strs[i],rw,paths[i])) // open success
+			continue;
+		
+		for (i--; i >= 0; i--) strclose(svr->stream + i);
         return 0;
     }
+	for (i = 0; i < svr->nstr_out; i++) {
+		strcpy(file2, paths_out[i]); if ((p = strstr(file2, "::"))) *p = '\0';
+	
+		// output stream
+		rw = STR_MODE_W;
+		if (strs_out[i] != STR_FILE) rw |= STR_MODE_W;
+		if (stropen(svr->stream_out + i, strs_out[i], rw, paths_out[i])) // open success
+			continue;
+
+		for (i--; i >= 0; i--) strclose(svr->stream_out + i);
+		return 0;
+	}
     /* write start command to input stream */
     if (cmd) strsendcmd(svr->stream,cmd);
     
     /* create stream server thread */
 #ifdef WIN32
-    if (!(svr->thread=CreateThread(NULL,0,strsvrthread,svr,0,NULL))) {
+    if (!(svr->thread=CreateThread(NULL,0,strsvrthread2,svr,0,NULL))) {
 #else
-    if (pthread_create(&svr->thread,NULL,strsvrthread,svr)) {
+    if (pthread_create(&svr->thread,NULL,strsvrthread2,svr)) {
 #endif
         for (i=0;i<svr->nstr;i++) strclose(svr->stream+i);
-        return 0;
+		for (i = 0; i < svr->nstr_out; i++) strclose(svr->stream_out + i);
+		return 0;
     }
     return 1;
 }
+extern int strsvrstart(strsvr_t *svr, int *opts, int *strs, char **paths,
+	strconv_t **conv, const char *cmd, const double *nmeapos)
+{
+	int i, rw, stropt[5] = { 0 };
+	char file1[MAXSTRPATH], file2[MAXSTRPATH], *p;
+
+	tracet(3, "strsvrstart:\n");
+
+	if (svr->state) return 0;
+
+	strinitcom();
+
+	for (i = 0; i < 4; i++) stropt[i] = opts[i];
+	stropt[4] = opts[6];
+	strsetopt(stropt);
+	svr->cycle = opts[4];
+	svr->buffsize = opts[3] < 4096 ? 4096 : opts[3]; /* >=4096byte */
+	svr->nmeacycle = 0 < opts[5] && opts[5] < 1000 ? 1000 : opts[5]; /* >=1s */
+	for (i = 0; i < 3; i++) svr->nmeapos[i] = nmeapos ? nmeapos[i] : 0.0;
+
+	for (i = 0; i < svr->nstr - 1; i++) svr->conv[i] = conv[i];
+
+	if (!(svr->buff = (unsigned char *)malloc(svr->buffsize)) ||
+		!(svr->pbuf = (unsigned char *)malloc(svr->buffsize))) {
+		free(svr->buff); free(svr->pbuf);
+		return 0;
+	}
+	/* open streams */
+	for (i = 0; i < svr->nstr; i++) {
+		strcpy(file1, paths[0]); if ((p = strstr(file1, "::"))) *p = '\0';
+		strcpy(file2, paths[i]); if ((p = strstr(file2, "::"))) *p = '\0';
+		if (i > 0 && *file1 && !strcmp(file1, file2)) {
+			sprintf(svr->stream[i].msg, "output path error: %s", file2);
+			for (i--; i >= 0; i--) strclose(svr->stream + i);
+			return 0;
+		}
+		rw = i == 0 ? STR_MODE_R : STR_MODE_W;
+		if (strs[i] != STR_FILE) rw |= STR_MODE_W;
+		if (stropen(svr->stream + i, strs[i], rw, paths[i])) continue;
+		for (i--; i >= 0; i--) strclose(svr->stream + i);
+		return 0;
+	}
+	/* write start command to input stream */
+	if (cmd) strsendcmd(svr->stream, cmd);
+
+	/* create stream server thread */
+#ifdef WIN32
+	if (!(svr->thread = CreateThread(NULL, 0, strsvrthread, svr, 0, NULL))) {
+#else
+	if (pthread_create(&svr->thread, NULL, strsvrthread, svr)) {
+#endif
+		for (i = 0; i < svr->nstr; i++) strclose(svr->stream + i);
+		return 0;
+	}
+	return 1;
+	}
 /* stop stream server ----------------------------------------------------------
 * start stream server
 * args   : strsvr_t *svr    IO  stream server struct
@@ -545,7 +670,7 @@ extern void strsvrstop(strsvr_t *svr, const char *cmd)
 *          char   *msg      O   messages
 * return : none
 *-----------------------------------------------------------------------------*/
-extern void strsvrstat(strsvr_t *svr, int *stat, int *byte, int *bps, char *msg)
+extern void strsvrstat2(strsvr_t *svr, int *stat, int *byte, int *bps, char *msg)
 {
     char s[MAXSTRMSG]="",*p=msg;
     int i;
@@ -553,16 +678,36 @@ extern void strsvrstat(strsvr_t *svr, int *stat, int *byte, int *bps, char *msg)
     tracet(4,"strsvrstat:\n");
     
     for (i=0;i<svr->nstr;i++) {
-        if (i==0) {
-            strsum(svr->stream,byte,bps,NULL,NULL);
-            stat[i]=strstat(svr->stream,s);
-        }
-        else {
-            strsum(svr->stream+i,NULL,NULL,byte+i,bps+i);
-            stat[i]=strstat(svr->stream+i,s);
-        }
+        strsum(svr->stream+i,byte,bps,NULL,NULL);
+        stat[i]=strstat(svr->stream + i,s);
+        
         if (*s) p+=sprintf(p,"(%d) %s ",i,s);
     }
+	for (i = 0; i < svr->nstr_out; i++) {
+		strsum(svr->stream_out + i, NULL, NULL, byte + i, bps + i);
+		stat[i] = strstat(svr->stream_out + i, s);
+		
+		if (*s) p += sprintf(p, "(%d) %s ", i, s);
+	}
+}
+extern void strsvrstat(strsvr_t *svr, int *stat, int *byte, int *bps, char *msg)
+{
+	char s[MAXSTRMSG] = "", *p = msg;
+	int i;
+
+	tracet(4, "strsvrstat:\n");
+
+	for (i = 0; i < svr->nstr; i++) {
+		if (i == 0) {
+			strsum(svr->stream, byte, bps, NULL, NULL);
+			stat[i] = strstat(svr->stream, s);
+		}
+		else {
+			strsum(svr->stream + i, NULL, NULL, byte + i, bps + i);
+			stat[i] = strstat(svr->stream + i, s);
+		}
+		if (*s) p += sprintf(p, "(%d) %s ", i, s);
+	}
 }
 /* peek input/output stream ----------------------------------------------------
 * peek input/output stream of stream server

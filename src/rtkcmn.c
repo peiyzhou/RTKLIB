@@ -3777,6 +3777,16 @@ extern int uncompress(const char *file, char *uncfile)
     trace(3,"uncompress: stat=%d\n",stat);
     return stat;
 }
+
+/* show message --------------------------------------------------------------*/
+extern int showmsg(char *format, ...)
+{
+	va_list arg;
+	va_start(arg, format); vfprintf(stderr, format, arg); va_end(arg);
+	fprintf(stderr, "\r");
+	return 0;
+}
+
 /* dummy application functions for shared library ----------------------------*/
 #ifdef DLL
 extern int showmsg(char *format,...) {return 0;}

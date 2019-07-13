@@ -180,134 +180,99 @@ static void readcmd(const char *file, char *cmd, int type)
     }
     fclose(fp);
 }
-/* str2str -------------------------------------------------------------------*/
-int main(int argc, char **argv)
+
+int StreamFilePath(char infile[][1024])
 {
-    static char cmd[MAXRCVCMD]="";
-    const char ss[]={'E','-','W','C','C'};
-    strconv_t *conv[MAXSTR]={NULL};
-    double pos[3],stapos[3]={0},off[3]={0};
-    char *paths[MAXSTR],s[MAXSTR][MAXSTRPATH]={{0}},*cmdfile="";
-    char *local="",*proxy="",*msg="1004,1019",*opt="",buff[256],*p;
-    char strmsg[MAXSTRMSG]="",*antinfo="",*rcvinfo="";
-    char *ant[]={"","",""},*rcv[]={"","",""};
-    int i,j,n=0,dispint=5000,trlevel=0,opts[]={10000,10000,2000,32768,10,0,30};
-    int types[MAXSTR]={STR_FILE,STR_FILE},stat[MAXSTR]={0},byte[MAXSTR]={0};
-    int bps[MAXSTR]={0},fmts[MAXSTR]={0},sta=0;
-    
-    for (i=0;i<MAXSTR;i++) paths[i]=s[i];
-    
-    for (i=1;i<argc;i++) {
-        if (!strcmp(argv[i],"-in")&&i+1<argc) {
-            if (!decodepath(argv[++i],types,paths[0],fmts)) return -1;
-        }
-        else if (!strcmp(argv[i],"-out")&&i+1<argc&&n<MAXSTR-1) {
-            if (!decodepath(argv[++i],types+n+1,paths[n+1],fmts+n+1)) return -1;
-            n++;
-        }
-        else if (!strcmp(argv[i],"-p")&&i+3<argc) {
-            pos[0]=atof(argv[++i])*D2R;
-            pos[1]=atof(argv[++i])*D2R;
-            pos[2]=atof(argv[++i]);
-            pos2ecef(pos,stapos);
-        }
-        else if (!strcmp(argv[i],"-o")&&i+3<argc) {
-            off[0]=atof(argv[++i]);
-            off[1]=atof(argv[++i]);
-            off[2]=atof(argv[++i]);
-        }
-        else if (!strcmp(argv[i],"-msg")&&i+1<argc) msg=argv[++i];
-        else if (!strcmp(argv[i],"-opt")&&i+1<argc) opt=argv[++i];
-        else if (!strcmp(argv[i],"-sta")&&i+1<argc) sta=atoi(argv[++i]);
-        else if (!strcmp(argv[i],"-d"  )&&i+1<argc) dispint=atoi(argv[++i]);
-        else if (!strcmp(argv[i],"-s"  )&&i+1<argc) opts[0]=atoi(argv[++i]);
-        else if (!strcmp(argv[i],"-r"  )&&i+1<argc) opts[1]=atoi(argv[++i]);
-        else if (!strcmp(argv[i],"-n"  )&&i+1<argc) opts[5]=atoi(argv[++i]);
-        else if (!strcmp(argv[i],"-f"  )&&i+1<argc) opts[6]=atoi(argv[++i]);
-        else if (!strcmp(argv[i],"-c"  )&&i+1<argc) cmdfile=argv[++i];
-        else if (!strcmp(argv[i],"-a"  )&&i+1<argc) antinfo=argv[++i];
-        else if (!strcmp(argv[i],"-i"  )&&i+1<argc) rcvinfo=argv[++i];
-        else if (!strcmp(argv[i],"-l"  )&&i+1<argc) local=argv[++i];
-        else if (!strcmp(argv[i],"-x"  )&&i+1<argc) proxy=argv[++i];
-        else if (!strcmp(argv[i],"-t"  )&&i+1<argc) trlevel=atoi(argv[++i]);
-        else if (*argv[i]=='-') printhelp();
-    }
-    if (n<=0) n=1; /* stdout */
-    
-    for (i=0;i<n;i++) {
-        if (fmts[i+1]<=0) continue;
-        if (fmts[i+1]!=STRFMT_RTCM3) {
-            fprintf(stderr,"unsupported output format\n");
-            return -1;
-        }
-        if (fmts[0]<0) {
-            fprintf(stderr,"specify input format\n");
-            return -1;
-        }
-        if (!(conv[i]=strconvnew(fmts[0],fmts[i+1],msg,sta,sta!=0,opt))) {
-            fprintf(stderr,"stream conversion error\n");
-            return -1;
-        }
-        strcpy(buff,antinfo);
-        for (p=strtok(buff,","),j=0;p&&j<3;p=strtok(NULL,",")) ant[j++]=p;
-        strcpy(conv[i]->out.sta.antdes,ant[0]);
-        strcpy(conv[i]->out.sta.antsno,ant[1]);
-        conv[i]->out.sta.antsetup=atoi(ant[2]);
-        strcpy(buff,rcvinfo);
-        for (p=strtok(buff,","),j=0;p&&j<3;p=strtok(NULL,",")) rcv[j++]=p;
-        strcpy(conv[i]->out.sta.rectype,rcv[0]);
-        strcpy(conv[i]->out.sta.recver ,rcv[1]);
-        strcpy(conv[i]->out.sta.recsno ,rcv[2]);
-        matcpy(conv[i]->out.sta.pos,stapos,3,1);
-        matcpy(conv[i]->out.sta.del,off,3,1);
-    }
-    signal(SIGTERM,sigfunc);
-    signal(SIGINT ,sigfunc);
-    signal(SIGHUP ,SIG_IGN);
-    signal(SIGPIPE,SIG_IGN);
-    
-    strsvrinit(&strsvr,n+1);
-    
-    if (trlevel>0) {
-        traceopen(TRFILE);
-        tracelevel(trlevel);
-    }
-    fprintf(stderr,"stream server start\n");
-    
-    strsetdir(local);
-    strsetproxy(proxy);
-    
-    if (*cmdfile) readcmd(cmdfile,cmd,0);
-    
-    /* start stream server */
-    if (!strsvrstart(&strsvr,opts,types,paths,conv,*cmd?cmd:NULL,stapos)) {
-        fprintf(stderr,"stream server start error\n");
-        return -1;
-    }
-    for (intrflg=0;!intrflg;) {
-        
-        /* get stream server status */
-        strsvrstat(&strsvr,stat,byte,bps,strmsg);
-        
-        /* show stream server status */
-        for (i=0,p=buff;i<MAXSTR;i++) p+=sprintf(p,"%c",ss[stat[i]+1]);
-        
-        fprintf(stderr,"%s [%s] %10d B %7d bps %s\n",
-                time_str(utc2gpst(timeget()),0),buff,byte[0],bps[0],strmsg);
-        
-        sleepms(dispint);
-    }
-    if (*cmdfile) readcmd(cmdfile,cmd,1);
-    
-    /* stop stream server */
-    strsvrstop(&strsvr,*cmd?cmd:NULL);
-    
-    for (i=0;i<n;i++) {
-        strconvfree(conv[i]);
-    }
-    if (trlevel>0) {
-        traceclose();
-    }
-    fprintf(stderr,"stream server stop\n");
-    return 0;
+	int n = 0;
+
+	return n;
+}
+
+int StreamFilePath_out(char infile[][1024])
+{
+	int n = 0;
+	strcpy(infile[n++], "tcpsvr://:6661");
+	strcpy(infile[n++], "tcpsvr://:6662");
+	strcpy(infile[n++], "tcpsvr://:6663");
+	return n;
+}
+
+/* str2str -------------------------------------------------------------------*/
+int main()
+{
+	static char cmd[MAXRCVCMD] = "";
+	const char ss[] = { 'E','-','W','C','C' };
+	strconv_t *conv[MAXSTR] = { NULL };
+	double pos[3], stapos[3] = { 0 }, off[3] = { 0 };
+	char infile_[9][1024]    = { "" }, *infile[9]   , *paths   [MAXSTR], s[MAXSTR][MAXSTRPATH] = { {0} }, *cmdfile = "";
+	char infile_out[9][1024] = { "" }, *infileout[9], *pathsout[MAXSTR], s2[MAXSTR][MAXSTRPATH] = { {0} };
+	char *local = "", *proxy = "", *msg = "1004,1019", *opt = "", buff[256], *p;
+	char strmsg[MAXSTRMSG] = "", *antinfo = "", *rcvinfo = "";
+	char *ant[] = { "","","" }, *rcv[] = { "","","" };
+	int i, j, n = 0, dispint = 5000, trlevel = 0, opts[] = { 10000,10000,2000,32768,10,0,30 };
+	int types[MAXSTR] = { STR_FILE,STR_FILE }, typesout[MAXSTR] = { STR_FILE,STR_FILE }, stat[MAXSTR] = { 0 }, byte[MAXSTR] = { 0 };
+	int bps[MAXSTR] = { 0 }, fmts[MAXSTR] = { 0 }, fmtsout[MAXSTR] = { 0 }, sta = 0;
+
+	for (i = 0; i < MAXSTR; i++) paths[i] = s[i];
+	for (i = 0; i < MAXSTR; i++) pathsout[i] = s2[i];
+	// decode input streams
+	int filenum = StreamFilePath(infile_);
+	for (i = 0; i < filenum; i++)
+	{
+		infile[i] = infile_[i];
+		if (!decodepath(infile[i], types+i, paths[i], fmts + i)) return -1;
+	}
+	// decode output streams
+	int filenum_out = StreamFilePath_out(infile_out);
+	for (i = 0; i < filenum_out; i++)
+	{
+		infileout[i] = infile_out[i];
+		if (!decodepath(infileout[i], typesout + i, pathsout[i], fmtsout + i)) return -1;
+	}
+	if (filenum_out == filenum)
+		strsvrinit(&strsvr, filenum);
+
+	if (trlevel > 0) {
+		traceopen(TRFILE);
+		tracelevel(trlevel);
+	}
+	fprintf(stderr, "stream server start\n");
+
+	strsetdir(local);
+	strsetproxy(proxy);
+
+	if (*cmdfile) readcmd(cmdfile, cmd, 0);
+
+	/* start stream server */
+	if (!strsvrstart2(&strsvr, opts, types, paths, typesout, pathsout, conv, *cmd ? cmd : NULL, stapos)) {
+		fprintf(stderr, "stream server start error\n");
+		return -1;
+	}
+	for (intrflg = 0; !intrflg;) {
+
+		/* get stream server status */
+		strsvrstat2(&strsvr, stat, byte, bps, strmsg);
+
+		/* show stream server status */
+		for (i = 0, p = buff; i < MAXSTR; i++) 
+			p += sprintf(p, "%c", ss[stat[i] + 1]);
+
+		fprintf(stderr, "%s [%s] %10d B %7d bps %s\n",
+			time_str(utc2gpst(timeget()), 0), buff, byte[0], bps[0], strmsg);
+
+		sleepms(dispint);
+	}
+	if (*cmdfile) readcmd(cmdfile, cmd, 1);
+
+	/* stop stream server */
+	strsvrstop(&strsvr, *cmd ? cmd : NULL);
+
+	for (i = 0; i < n; i++) {
+		strconvfree(conv[i]);
+	}
+	if (trlevel > 0) {
+		traceclose();
+	}
+	fprintf(stderr, "stream server stop\n");
+	return 0;
 }
