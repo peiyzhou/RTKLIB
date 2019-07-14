@@ -184,7 +184,9 @@ static void readcmd(const char *file, char *cmd, int type)
 int StreamFilePath(char infile[][1024])
 {
 	int n = 0;
-
+	strcpy(infile[n++], "ntrip://Peiyuan:zpy12345@165.206.203.10:31100/RTCM3_IAAM#rtcm3");
+	strcpy(infile[n++], "ntrip://Peiyuan:zpy12345@products.igs-ip.net:2101/RTCM3EPH#rtcm3");
+	strcpy(infile[n++], "ntrip://Peiyuan:zpy12345@products.igs-ip.net:2101/CLK93#rtcm3");
 	return n;
 }
 

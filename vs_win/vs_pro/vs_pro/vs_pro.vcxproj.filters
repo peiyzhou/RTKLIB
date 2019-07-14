@@ -138,6 +138,9 @@
     <ClCompile Include="..\..\..\app\rtkrcv\rtkrcv.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\postpos.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\rtklib.h">

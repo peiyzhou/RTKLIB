@@ -343,7 +343,7 @@ static void procpos(FILE *fp, const prcopt_t *popt, const solopt_t *sopt,
         if (!rtkpos(&rtk,obs,n,&navs)) continue;
         
         if (mode==0) { /* forward/backward */
-            if (!solstatic) {
+            if (1) {
                 outsol(fp,&rtk.sol,rtk.rb,sopt);
             }
             else if (time.time==0||pri[rtk.sol.stat]<=pri[sol.stat]) {

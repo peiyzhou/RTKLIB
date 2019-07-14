@@ -514,8 +514,11 @@ typedef struct {        /* antenna parameter type */
     char code[MAXANT];  /* serial number or satellite code */
     gtime_t ts,te;      /* valid time start and end */
     double off[NFREQ][ 3]; /* phase center offset e/n/u or x/y/z (m) */
-    double var[NFREQ][19]; /* phase center variation (m) */
+    double var[NFREQ][80 * 20]; /* phase center variation (m) */
                         /* el=90,85,...,0 or nadir=0,1,2,3,... (deg) */
+	double dazi;             //Increment of the azimuth£º0 to 360 with increment 'DAZI'(in degrees).
+	double zen1, zen2, dzen;   //Receiver antenna:Definition of the grid in zenith angle.
+							 //Satellite antenna:Definition of the grid in nadir angle.
 } pcv_t;
 
 typedef struct {        /* antenna parameters type */
@@ -819,7 +822,7 @@ typedef struct {        /* navigation data type */
     double ion_cmp[8];  /* BeiDou iono model parameters {a0,a1,a2,a3,b0,b1,b2,b3} */
     int leaps;          /* leap seconds (s) */
     double lam[MAXSAT][NFREQ]; /* carrier wave lengths (m) */
-    double cbias[MAXSAT][3];   /* code bias (0:p1-p2,1:p1-c1,2:p2-c2) (m) */
+    double cbias[MAXSAT][5];   /* code bias (0:p1-p2,1:p1-c1,2:p2-c2) (m) */
     double wlbias[MAXSAT];     /* wide-lane bias (cycle) */
     double glo_cpbias[4];    /* glonass code-phase bias {1C,1P,2C,2P} (m) */
     char glo_fcn[MAXPRNGLO+1]; /* glonass frequency channel number + 8 */

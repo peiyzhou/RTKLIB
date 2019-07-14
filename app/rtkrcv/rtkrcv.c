@@ -43,7 +43,7 @@ static const char rcsid[]="$Id:$";
 #define TRACEFILE   "rtkrcv_%Y%m%d%h%M.trace" /* debug trace file */
 #define SSRFILE     "rtkrcv_%Y%m%d%h%M.ssr"   /* solution file */
 #define INTKEEPALIVE 1000               /* keep alive interval (ms) */
-
+#define MAXFILE 8
 #define ESC_CLEAR   "\033[2J"           /* ansi/vt100: erase screen */
 #define ESC_RESET   "\033[0m"           /* ansi/vt100: reset attribute */
 #define ESC_BOLD    "\033[1m"           /* ansi/vt100: bold */
@@ -267,7 +267,8 @@ static void readant(vt_t *vt, prcopt_t *opt, nav_t *nav)
     opt->pcvr[0]=opt->pcvr[1]=pcv0;
     if (!*filopt.rcvantp) return;
     
-    if (readpcv(filopt.rcvantp,&pcvr)) {
+    if (readpcv(filopt.rcvantp,&pcvr)) 
+	{
         for (i=0;i<2;i++) {
             if (!*opt->anttype[i]) continue;
             if (!(pcv=searchpcv(0,opt->anttype[i],time,&pcvr))) {
@@ -277,7 +278,8 @@ static void readant(vt_t *vt, prcopt_t *opt, nav_t *nav)
             opt->pcvr[i]=*pcv;
         }
     }
-    else printf("antenna file open error %s",filopt.rcvantp);
+    else 
+		printf("antenna file open error %s",filopt.rcvantp);
     
     if (readpcv(filopt.satantp,&pcvs)) {
         for (i=0;i<MAXSAT;i++) {
@@ -1323,63 +1325,106 @@ static void cmdshell(vt_t *vt)
 *     command is distinguished according to header characters.
 *     
 *-----------------------------------------------------------------------------*/
+
+int StreamFilePath(char infile[][1024])
+{
+	int n = 0;
+	strcpy(infile[n++], "E:\\Paper_scripts\\GitF\\RTKLIB\\vs_win\\vs_pro\\vs_pro\\data\\iaam0320.19o");
+	strcpy(infile[n++], "E:\\Paper_scripts\\GitF\\RTKLIB\\vs_win\\vs_pro\\vs_pro\\data\\brdc0320.19n");
+	strcpy(infile[n++], "E:\\Paper_scripts\\GitF\\RTKLIB\\vs_win\\vs_pro\\vs_pro\\data\\COD20385.CLK");
+	strcpy(infile[n++], "E:\\Paper_scripts\\GitF\\RTKLIB\\vs_win\\vs_pro\\vs_pro\\data\\COD20384.EPH");
+	strcpy(infile[n++], "E:\\Paper_scripts\\GitF\\RTKLIB\\vs_win\\vs_pro\\vs_pro\\data\\COD20385.EPH");
+	strcpy(infile[n++], "E:\\Paper_scripts\\GitF\\RTKLIB\\vs_win\\vs_pro\\vs_pro\\data\\COD20386.EPH");
+	return n;
+}
+extern void settspan(gtime_t ts, gtime_t te) {}
+extern void settime(gtime_t time) {}
 int main(int argc, char **argv)
 {
-    vt_t vt={0};
-    int i,start=0,port=0,outstat=1,trace=1;
-    char *dev="",file[MAXSTR]="E:\\Paper_scripts\\GitF\\RTKLIB\\app\\rtkrcv\\ppp.conf";
-    
+#ifdef RT
+	vt_t vt = { 0 };
+	int i, start = 0, port = 0, outstat = 1, trace = 1;
+	char *dev = "", file[MAXSTR] = "E:\\Paper_scripts\\GitF\\RTKLIB\\app\\rtkrcv\\ppp.conf";
+
 	start = 1;//start RTK server on program startup
 	port = 11; //port number for telnet console
 	moniport = 12;//port number for monitor stream
-	
-    if (trace>0) {
-        traceopen(TRACEFILE);
-        tracelevel(trace);
-    }
-    /* initialize rtk server and monitor port */
-    rtksvrinit(&svr);
-    strinit(&moni);
-    
-    /* load options file */
-    if (!*file) sprintf(file,"%s/%s",OPTSDIR,OPTSFILE);
-    
-    resetsysopts();
-    if (!loadopts(file,rcvopts)||!loadopts(file,sysopts)) {
-        fprintf(stderr,"no options file: %s. defaults used\n",file);
-    }
-    getsysopts(&prcopt,solopt,&filopt);
-    
-    /* read navigation data */
-    if (!readnav(NAVIFILE,&svr.nav)) {
-        fprintf(stderr,"no navigation data: %s\n",NAVIFILE);
-    }
-    if (outstat>0) {
-        rtkopenstat(STATFILE,outstat);
-    }
-    /* open monitor port */
-    if (moniport>0&&!openmoni(moniport)) {
-        fprintf(stderr,"monitor port open error: %d\n",moniport);
-        return -1;
-    }
-    /* start rtk server */
-    if (start&&!startsvr(&vt)) return -1;
-    
-    while (!intflg) {
-       // can print something 
-    }
-    /* stop rtk server */
-    stopsvr(&vt);
-    
-    if (moniport>0) closemoni();
-    
-    if (outstat>0) rtkclosestat();
-    
-    if (trace>0) traceclose();
-    
-    /* save navigation data */
-    if (!savenav(NAVIFILE,&svr.nav)) {
-        fprintf(stderr,"navigation data save error: %s\n",NAVIFILE);
-    }
-    return 0;
+
+	if (trace > 0) {
+		traceopen(TRACEFILE);
+		tracelevel(trace);
+	}
+	/* initialize rtk server and monitor port */
+	rtksvrinit(&svr);
+	strinit(&moni);
+
+	/* load options file */
+	if (!*file) sprintf(file, "%s/%s", OPTSDIR, OPTSFILE);
+
+	resetsysopts();
+	if (!loadopts(file, rcvopts) || !loadopts(file, sysopts)) {
+		fprintf(stderr, "no options file: %s. defaults used\n", file);
+	}
+	getsysopts(&prcopt, solopt, &filopt);
+
+	/* read navigation data */
+	if (!readnav(NAVIFILE, &svr.nav)) {
+		fprintf(stderr, "no navigation data: %s\n", NAVIFILE);
+	}
+	if (outstat > 0) {
+		rtkopenstat(STATFILE, outstat);
+	}
+	/* open monitor port */
+	if (moniport > 0 && !openmoni(moniport)) {
+		fprintf(stderr, "monitor port open error: %d\n", moniport);
+		return -1;
+	}
+	/* start rtk server */
+	if (start && !startsvr(&vt)) return -1;
+
+	while (!intflg) {
+		// can print something 
+	}
+	/* stop rtk server */
+	stopsvr(&vt);
+
+	if (moniport > 0) closemoni();
+
+	if (outstat > 0) rtkclosestat();
+
+	if (trace > 0) traceclose();
+
+	/* save navigation data */
+	if (!savenav(NAVIFILE, &svr.nav)) {
+		fprintf(stderr, "navigation data save error: %s\n", NAVIFILE);
+	}
+	return 0;
+#else
+	prcopt_t prcopt = prcopt_default;
+	solopt_t solopt = solopt_default;
+	filopt_t filopt = { "" };
+	gtime_t ts = { 0 }, te = { 0 };
+	double tint = 0.0, es[] = { 2000,1,1,0,0,0 }, ee[] = { 2000,12,31,23,59,59 }, pos[3];
+	int i, j, n, ret;
+	char *infile[MAXFILE], infile_[MAXFILE][1024] = { "" }, *outfile = "mypos_s.pos";
+	char file[MAXSTR] = "E:\\Paper_scripts\\GitF\\RTKLIB\\app\\rnx2rtkp\\gcc\\ppp_post.conf";
+	sprintf(solopt.prog, "%s ver.%s", PRGNAME, VER_RTKLIB);
+	sprintf(filopt.trace, "%s.trace", PRGNAME);
+
+	/* load options from configuration file */
+	resetsysopts();
+	if (!loadopts(file, sysopts)) return -1;
+	getsysopts(&prcopt, &solopt, &filopt);
+
+	n = StreamFilePath(infile_);
+	for (i = 0; i < n; i++)infile[i] = infile_[i];
+	if (n <= 0) {
+		showmsg("error : no input file");
+		return -2;
+	}
+	ret = postpos(ts, te, tint, 0.0, &prcopt, &solopt, &filopt, infile, n, outfile, "", "");
+
+	if (!ret) fprintf(stderr, "%40s\r", "");
+	return ret;
+#endif // RT  
 }

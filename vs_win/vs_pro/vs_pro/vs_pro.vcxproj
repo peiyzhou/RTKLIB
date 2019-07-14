@@ -137,6 +137,7 @@
     <ClCompile Include="..\..\..\src\lambda.c" />
     <ClCompile Include="..\..\..\src\options.c" />
     <ClCompile Include="..\..\..\src\pntpos.c" />
+    <ClCompile Include="..\..\..\src\postpos.c" />
     <ClCompile Include="..\..\..\src\ppp.c" />
     <ClCompile Include="..\..\..\src\ppp_ar.c" />
     <ClCompile Include="..\..\..\src\preceph.c" />
